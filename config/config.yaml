@@ -7,6 +7,6 @@ server:
 
 services:
   gateway:
-    url: "localhost:3000"
+    url: "localhost:8080"
     timeout: 4s
     idle_timeout: 60s

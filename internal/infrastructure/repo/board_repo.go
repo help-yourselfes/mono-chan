@@ -1,4 +1,4 @@
-package sqlite
+package repo
 
 import (
 	"context"
@@ -40,7 +40,7 @@ func (r *t) Create(ctx context.Context, board *m.Board) error {
 	return nil
 }
 
-func (r *t) GetByKey(ctx context.Context, key m.Key) (*m.Board, error) {
+func (r *t) GetByKey(ctx context.Context, key string) (*m.Board, error) {
 	query := `
 		SELECT * FROM boards
 		WHERE key = ?
@@ -57,7 +57,7 @@ func (r *t) GetByKey(ctx context.Context, key m.Key) (*m.Board, error) {
 	return &board, nil
 }
 
-func (r *t) Update(ctx context.Context, key m.Key, board *m.Board) error {
+func (r *t) Update(ctx context.Context, key string, board *m.Board) error {
 	query := `
 		UPDATE boards
 		SET caption = ?, description = ?
@@ -72,7 +72,7 @@ func (r *t) Update(ctx context.Context, key m.Key, board *m.Board) error {
 	return nil
 }
 
-func (r *t) Delete(ctx context.Context, key m.Key) error {
+func (r *t) Delete(ctx context.Context, key string) error {
 	query := `
 		DELETE FROM boards
 		WHERE key = ?
@@ -93,13 +93,17 @@ func (r *t) List(ctx context.Context) ([]*m.Board, error) {
 
 	defer rows.Close()
 
-	var boards []*m.Board
+	boards := make([]*m.Board, 0)
 	for rows.Next() {
 		var b m.Board
 		if err := rows.Scan(&b.Key, &b.Caption, &b.Description); err != nil {
 			return nil, err
 		}
 		boards = append(boards, &b)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return boards, nil

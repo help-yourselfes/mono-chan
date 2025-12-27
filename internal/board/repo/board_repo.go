@@ -8,8 +8,8 @@ import (
 
 type BoardRepo interface {
 	Create(ctx context.Context, board *m.Board) error
-	GetByKey(ctx context.Context, key m.Key) (*m.Board, error)
-	Update(ctx context.Context, key m.Key, board *m.Board) error
-	Delete(ctx context.Context, key m.Key) error
+	GetByKey(ctx context.Context, key string) (*m.Board, error)
+	Update(ctx context.Context, key string, board *m.Board) error
+	Delete(ctx context.Context, key string) error
 	List(ctx context.Context) ([]*m.Board, error)
 }

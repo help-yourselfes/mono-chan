@@ -1,9 +1,7 @@
 package model
 
-type Key string
-
 type Board struct {
-	Key         `json:"id"`
+	Key         string `json:"id"`
 	Caption     string `json:"caption"`
 	Description string `json:"description"`
 }
