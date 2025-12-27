@@ -1,0 +1,8 @@
+/storage
+
+*.db
+*.sqlite3
+
+.env
+
+go.sum
