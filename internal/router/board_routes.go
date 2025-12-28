@@ -7,11 +7,11 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/helpyourselfes/mono-chan/internal/app/board/handlers"
 	"github.com/helpyourselfes/mono-chan/internal/app/board/service"
-	"github.com/helpyourselfes/mono-chan/internal/infrastructure/repo"
+	"github.com/helpyourselfes/mono-chan/internal/infrastructure/board_repo"
 )
 
 func boardRoutes(storage *sql.DB) chi.Router {
-	repo := repo.NewSQLiteBoardRepo(storage)
+	repo := board_repo.NewSQLiteBoardRepo(storage)
 	service := service.NewBoardService(repo)
 	handler := handlers.NewBoardHandler(service)
 
