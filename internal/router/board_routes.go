@@ -5,8 +5,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/helpyourselfes/mono-chan/internal/board/handlers"
-	"github.com/helpyourselfes/mono-chan/internal/board/service"
+	"github.com/helpyourselfes/mono-chan/internal/app/board/handlers"
+	"github.com/helpyourselfes/mono-chan/internal/app/board/service"
 	"github.com/helpyourselfes/mono-chan/internal/infrastructure/repo"
 )
 

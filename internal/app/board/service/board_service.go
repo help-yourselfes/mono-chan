@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	m "github.com/helpyourselfes/mono-chan/internal/board/model"
-	"github.com/helpyourselfes/mono-chan/internal/board/repo"
+	m "github.com/helpyourselfes/mono-chan/internal/app/board/model"
+	"github.com/helpyourselfes/mono-chan/internal/app/board/repo"
 	"github.com/helpyourselfes/mono-chan/internal/pkg/errors"
 )
 

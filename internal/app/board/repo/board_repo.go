@@ -3,7 +3,7 @@ package repo
 import (
 	"context"
 
-	m "github.com/helpyourselfes/mono-chan/internal/board/model"
+	m "github.com/helpyourselfes/mono-chan/internal/app/board/model"
 )
 
 type BoardRepo interface {

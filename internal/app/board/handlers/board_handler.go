@@ -1,6 +1,6 @@
 package handlers
 
-import "github.com/helpyourselfes/mono-chan/internal/board/service"
+import "github.com/helpyourselfes/mono-chan/internal/app/board/service"
 
 type BoardHandler struct {
 	service *service.BoardService

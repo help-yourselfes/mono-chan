@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/render"
-	"github.com/helpyourselfes/mono-chan/internal/board/model"
-	valid "github.com/helpyourselfes/mono-chan/internal/board/validator"
+	"github.com/helpyourselfes/mono-chan/internal/app/board/model"
+	valid "github.com/helpyourselfes/mono-chan/internal/app/board/validator"
 	resp "github.com/helpyourselfes/mono-chan/internal/pkg/api/response"
 )
 

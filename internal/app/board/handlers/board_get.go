@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
-	valid "github.com/helpyourselfes/mono-chan/internal/board/validator"
+	valid "github.com/helpyourselfes/mono-chan/internal/app/board/validator"
 	resp "github.com/helpyourselfes/mono-chan/internal/pkg/api/response"
 )
 
