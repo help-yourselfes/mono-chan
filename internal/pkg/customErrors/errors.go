@@ -6,11 +6,12 @@ import (
 )
 
 var (
-	ErrInvalidInput  = errors.New("invalid input")
-	ErrNotFound      = errors.New("not found")
-	ErrAlreadyExists = errors.New("already exists")
-	ErrUnauthorized  = errors.New("unauthorized")
-	ErrNoPasswordSet = errors.New("no password set")
+	ErrInvalidInput     = errors.New("invalid input")
+	ErrNotFound         = errors.New("not found")
+	ErrAlreadyExists    = errors.New("already exists")
+	ErrUnauthorized     = errors.New("unauthorized")
+	ErrNoPasswordSet    = errors.New("no password set")
+	ErrIncorectPassword = errors.New("password is incorect")
 )
 
 func IsNotFound(err error) bool {

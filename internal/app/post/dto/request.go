@@ -5,6 +5,7 @@ type CreatePostRequest struct {
 	Text       string   `json:"text"`
 	MediaLinks []string `json:"media_links"`
 	IsOP       bool     `json:"is_op"`
+	Password   string   `json:"password"`
 }
 
 type UpdatePostRequest struct {

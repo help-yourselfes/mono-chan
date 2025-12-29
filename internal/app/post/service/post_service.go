@@ -2,10 +2,13 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/helpyourselfes/mono-chan/internal/app/post/dto"
+	"github.com/helpyourselfes/mono-chan/internal/app/post/model"
 	"github.com/helpyourselfes/mono-chan/internal/app/post/repo"
 	"github.com/helpyourselfes/mono-chan/internal/pkg/customErrors"
+	"github.com/helpyourselfes/mono-chan/internal/pkg/security"
 )
 
 type PostService struct {
@@ -18,24 +21,40 @@ func NewPostService(repo repo.PostRepo) *p {
 	return &p{repo: repo}
 }
 
-func (s *p) Create(ctx context.Context, post *dto.CreatePostRequest) (int64, error) {
-	if !(post.Text != "" || len(post.MediaLinks) != 0) {
-		return -1, customErrors.ErrInvalidInput
+func (s *p) Create(ctx context.Context, reqPost *dto.CreatePostRequest) (*dto.PostResponse, error) {
+	if !(reqPost.Text != "" || len(reqPost.MediaLinks) != 0) {
+		return nil, customErrors.ErrInvalidInput
 	}
 
-	res, err := s.repo.Create(ctx, post)
+	passwordHash, err := security.Hash(reqPost.Password)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 
-	return res, nil
+	post := &model.Post{
+		ThreadID:     reqPost.ThreadID,
+		Text:         reqPost.Text,
+		PasswordHash: passwordHash,
+		MediaLinks:   reqPost.MediaLinks,
+		CreatedAt:    time.Now(),
+	}
+
+	id, err := s.repo.Create(ctx, post)
+	if err != nil {
+		return nil, err
+	}
+
+	post.ID = id
+	resPost := dto.ToPostResponse(post)
+	return resPost, nil
 }
+
 func (s *p) GetById(ctx context.Context, id int64) (*dto.PostResponse, error) {
 	post, err := s.repo.GetById(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	resPost := postToResponse(post)
+	resPost := dto.ToPostResponse(post)
 
 	return resPost, nil
 }
@@ -45,19 +64,41 @@ func (s *p) Update(ctx context.Context, id int64, reqPost *dto.UpdatePostRequest
 		return err
 	}
 
-	if post.Password == "" {
+	if post.PasswordHash == "" {
 		return customErrors.ErrNoPasswordSet
 	}
 
-	return nil
+	equal, err := security.Verify(reqPost.Password, post.PasswordHash)
+	if err != nil {
+		return err
+	}
+	if !equal {
+		return customErrors.ErrIncorectPassword
+	}
+
+	return s.repo.Update(ctx, id, reqPost)
 }
 func (s *p) Delete(ctx context.Context, id int64, password string) error {
-	if password == "" {
-		return customErrors.ErrNoPasswordSet
+	post, err := s.repo.GetById(ctx, id)
+	if err != nil {
+		return err
 	}
 
-	return nil
+	equal, err := security.Verify(password, post.PasswordHash)
+	if err != nil {
+		return err
+	}
+
+	if !equal {
+		return customErrors.ErrIncorectPassword
+	}
+
+	return s.repo.Delete(ctx, id)
 }
-func (s *p) List(ctx context.Context, threadId int64) error {
-	return nil
+func (s *p) List(ctx context.Context, threadId int64) ([]*dto.PostResponse, error) {
+	posts, err := s.repo.List(ctx, threadId)
+	if err != nil {
+		return nil, err
+	}
+	return posts, nil
 }
