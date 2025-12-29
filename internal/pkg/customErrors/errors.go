@@ -1,4 +1,4 @@
-package errors
+package customErrors
 
 import (
 	"database/sql"
@@ -10,6 +10,7 @@ var (
 	ErrNotFound      = errors.New("not found")
 	ErrAlreadyExists = errors.New("already exists")
 	ErrUnauthorized  = errors.New("unauthorized")
+	ErrNoPasswordSet = errors.New("no password set")
 )
 
 func IsNotFound(err error) bool {

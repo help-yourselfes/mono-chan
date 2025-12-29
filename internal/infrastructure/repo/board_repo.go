@@ -6,7 +6,7 @@ import (
 
 	m "github.com/helpyourselfes/mono-chan/internal/app/board/model"
 	"github.com/helpyourselfes/mono-chan/internal/app/board/repo"
-	"github.com/helpyourselfes/mono-chan/internal/pkg/errors"
+	"github.com/helpyourselfes/mono-chan/internal/pkg/customErrors"
 	"github.com/mattn/go-sqlite3"
 )
 
@@ -32,7 +32,7 @@ func (r *t) Create(ctx context.Context, board *m.Board) error {
 	_, err := r.db.ExecContext(ctx, query, board.Key, board.Caption, board.Description)
 	if err != nil {
 		if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
-			return errors.ErrAlreadyExists
+			return customErrors.ErrAlreadyExists
 		}
 		return err
 	}
@@ -50,7 +50,7 @@ func (r *t) GetByKey(ctx context.Context, key string) (*m.Board, error) {
 	var board m.Board
 	if err := row.Scan(&board.Key, &board.Caption, &board.Description); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, errors.ErrNotFound
+			return nil, customErrors.ErrNotFound
 		}
 		return nil, err
 	}
