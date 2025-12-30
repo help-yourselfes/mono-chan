@@ -13,15 +13,7 @@ func InitSQLiteStorage(dbPath string) (*sql.DB, error) {
 		return nil, err
 	}
 
-	query := `
-		CREATE TABLE IF NOT EXISTS boards (
-			key TEXT PRIMARY KEY UNIQUE, 
-			caption TEXT,
-			description TEXT
-		);
-	`
-
-	if _, err := db.Exec(query); err != nil {
+	if _, err := db.Exec(Query); err != nil {
 		return nil, err
 	}
 

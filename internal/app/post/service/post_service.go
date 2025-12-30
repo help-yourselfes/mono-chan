@@ -25,10 +25,14 @@ func (s *p) Create(ctx context.Context, reqPost *dto.CreatePostRequest) (*dto.Po
 	if !(reqPost.Text != "" || len(reqPost.MediaLinks) != 0) {
 		return nil, customErrors.ErrInvalidInput
 	}
+	var passwordHash string
 
-	passwordHash, err := security.Hash(reqPost.Password)
-	if err != nil {
-		return nil, err
+	if reqPost.Password != "" {
+		var err error
+		passwordHash, err = security.Hash(reqPost.Password)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	post := &model.Post{
@@ -65,7 +69,7 @@ func (s *p) Update(ctx context.Context, reqPost *dto.UpdatePostRequest) error {
 		return err
 	}
 
-	if post.PasswordHash == "" {
+	if !post.HasPassword() {
 		return customErrors.ErrNoPasswordSet
 	}
 
@@ -84,6 +88,10 @@ func (s *p) DeleteByUser(ctx context.Context, boardKey string, id int64, passwor
 	post, err := s.repo.GetById(ctx, boardKey, id)
 	if err != nil {
 		return err
+	}
+
+	if !post.HasPassword() {
+		return customErrors.ErrNoPasswordSet
 	}
 
 	equal, err := security.Verify(password, post.PasswordHash)

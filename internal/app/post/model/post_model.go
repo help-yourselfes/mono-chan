@@ -14,3 +14,7 @@ type Post struct {
 	UpdatedAt    time.Time
 	IsOP         bool
 }
+
+func (p Post) HasPassword() bool {
+	return p.PasswordHash != ""
+}
