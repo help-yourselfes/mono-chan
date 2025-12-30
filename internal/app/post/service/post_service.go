@@ -49,8 +49,8 @@ func (s *p) Create(ctx context.Context, reqPost *dto.CreatePostRequest) (*dto.Po
 	return resPost, nil
 }
 
-func (s *p) GetById(ctx context.Context, id int64) (*dto.PostResponse, error) {
-	post, err := s.repo.GetById(ctx, id)
+func (s *p) GetById(ctx context.Context, boardKey string, id int64) (*dto.PostResponse, error) {
+	post, err := s.repo.GetById(ctx, boardKey, id)
 	if err != nil {
 		return nil, err
 	}
@@ -58,8 +58,9 @@ func (s *p) GetById(ctx context.Context, id int64) (*dto.PostResponse, error) {
 
 	return resPost, nil
 }
-func (s *p) Update(ctx context.Context, id int64, reqPost *dto.UpdatePostRequest) error {
-	post, err := s.repo.GetById(ctx, id)
+
+func (s *p) Update(ctx context.Context, reqPost *dto.UpdatePostRequest) error {
+	post, err := s.repo.GetById(ctx, reqPost.BoardKey, reqPost.ID)
 	if err != nil {
 		return err
 	}
@@ -76,10 +77,11 @@ func (s *p) Update(ctx context.Context, id int64, reqPost *dto.UpdatePostRequest
 		return customErrors.ErrIncorectPassword
 	}
 
-	return s.repo.Update(ctx, id, reqPost)
+	return s.repo.Update(ctx, reqPost)
 }
-func (s *p) Delete(ctx context.Context, id int64, password string) error {
-	post, err := s.repo.GetById(ctx, id)
+
+func (s *p) DeleteByUser(ctx context.Context, boardKey string, id int64, password string) error {
+	post, err := s.repo.GetById(ctx, boardKey, id)
 	if err != nil {
 		return err
 	}
@@ -95,10 +97,24 @@ func (s *p) Delete(ctx context.Context, id int64, password string) error {
 
 	return s.repo.Delete(ctx, id)
 }
-func (s *p) List(ctx context.Context, threadId int64) ([]*dto.PostResponse, error) {
-	posts, err := s.repo.List(ctx, threadId)
+
+func (s *p) DeleteByAdmin(ctx context.Context, boardKey string, id int64) error {
+	_, err := s.repo.GetById(ctx, boardKey, id)
+	if err != nil {
+		return err
+	}
+	return s.repo.Delete(ctx, id)
+}
+
+func (s *p) List(ctx context.Context, boardKey string, threadId int64) ([]*dto.PostResponse, error) {
+	posts, err := s.repo.List(ctx, boardKey, threadId)
 	if err != nil {
 		return nil, err
 	}
-	return posts, nil
+	resPosts := make([]*dto.PostResponse, len(posts))
+	for i := range posts {
+		resPosts[i] = dto.ToPostResponse(posts[i])
+	}
+
+	return resPosts, nil
 }

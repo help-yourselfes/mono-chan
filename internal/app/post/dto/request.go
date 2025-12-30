@@ -2,6 +2,7 @@ package dto
 
 type CreatePostRequest struct {
 	ThreadID   int64    `json:"thread_id"`
+	BoardKey   string   `json:"board_key"`
 	Text       string   `json:"text"`
 	MediaLinks []string `json:"media_links"`
 	IsOP       bool     `json:"is_op"`
@@ -9,6 +10,8 @@ type CreatePostRequest struct {
 }
 
 type UpdatePostRequest struct {
+	ID         int64
+	BoardKey   string   `json:"board_key"`
 	Text       string   `json:"text"`
 	MediaLinks []string `json:"media_links"`
 	Password   string   `json:"password"`
