@@ -64,7 +64,7 @@ func (r *sqliteBoardRepo) Update(ctx context.Context, key string, board *m.Board
 		WHERE key = ?
 	`
 
-	_, err := r.db.Exec(query, board.Caption, board.Description, board.Key)
+	_, err := r.db.ExecContext(ctx, query, board.Caption, board.Description, board.Key)
 	if err != nil {
 		return err
 	}

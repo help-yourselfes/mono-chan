@@ -20,8 +20,8 @@ type p = sqlitePostRepo
 
 var _ repo.PostRepo = &p{}
 
-func NewSQLitePostRepo(db *sql.DB) *t {
-	return &t{db: db}
+func NewSQLitePostRepo(db *sql.DB) *p {
+	return &p{db: db}
 }
 
 func (r *p) Create(ctx context.Context, post *model.Post) (int64, error) {
