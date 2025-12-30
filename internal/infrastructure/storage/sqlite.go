@@ -7,7 +7,8 @@ import (
 )
 
 func InitSQLiteStorage(dbPath string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", dbPath)
+	connectionString := dbPath + "?parseTime=true"
+	db, err := sql.Open("sqlite3", connectionString)
 
 	if err != nil {
 		return nil, err

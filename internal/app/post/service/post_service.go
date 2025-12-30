@@ -34,13 +34,13 @@ func (s *p) Create(ctx context.Context, reqPost *dto.CreatePostRequest) (*dto.Po
 			return nil, err
 		}
 	}
-
+	now := time.Now()
 	post := &model.Post{
 		ThreadID:     reqPost.ThreadID,
 		Text:         reqPost.Text,
 		PasswordHash: passwordHash,
 		MediaLinks:   reqPost.MediaLinks,
-		CreatedAt:    time.Now(),
+		CreatedAt:    now,
 	}
 
 	id, err := s.repo.Create(ctx, post)
@@ -103,15 +103,15 @@ func (s *p) DeleteByUser(ctx context.Context, boardKey string, id int64, passwor
 		return customErrors.ErrIncorectPassword
 	}
 
-	return s.repo.Delete(ctx, id)
+	return s.repo.Delete(ctx, post.GlobalID)
 }
 
 func (s *p) DeleteByAdmin(ctx context.Context, boardKey string, id int64) error {
-	_, err := s.repo.GetById(ctx, boardKey, id)
+	post, err := s.repo.GetById(ctx, boardKey, id)
 	if err != nil {
 		return err
 	}
-	return s.repo.Delete(ctx, id)
+	return s.repo.Delete(ctx, post.GlobalID)
 }
 
 func (s *p) List(ctx context.Context, boardKey string, threadId int64) ([]*dto.PostResponse, error) {

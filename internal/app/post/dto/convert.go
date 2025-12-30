@@ -9,7 +9,7 @@ func ToPostResponse(post *model.Post) *PostResponse {
 		Text:       post.Text,
 		MediaLinks: post.MediaLinks,
 		CreatedAt:  post.CreatedAt,
-		UpdatedAt:  post.UpdatedAt,
+		UpdatedAt:  *post.UpdatedAt,
 		IsOP:       post.IsOP,
 	}
 }

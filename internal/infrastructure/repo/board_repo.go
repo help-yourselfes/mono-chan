@@ -17,11 +17,11 @@ type t = sqliteBoardRepo
 
 var _ repo.BoardRepo = &t{}
 
-func NewSQLiteBoardRepo(db *sql.DB) *t {
+func NewSQLiteBoardRepo(db *sql.DB) *sqliteBoardRepo {
 	return &t{db: db}
 }
 
-func (r *t) Create(ctx context.Context, board *m.Board) error {
+func (r *sqliteBoardRepo) Create(ctx context.Context, board *m.Board) error {
 	query :=
 		`
 		INSERT INTO boards (
@@ -40,7 +40,7 @@ func (r *t) Create(ctx context.Context, board *m.Board) error {
 	return nil
 }
 
-func (r *t) GetByKey(ctx context.Context, key string) (*m.Board, error) {
+func (r *sqliteBoardRepo) GetByKey(ctx context.Context, key string) (*m.Board, error) {
 	query := `
 		SELECT * FROM boards
 		WHERE key = ?
@@ -57,7 +57,7 @@ func (r *t) GetByKey(ctx context.Context, key string) (*m.Board, error) {
 	return &board, nil
 }
 
-func (r *t) Update(ctx context.Context, key string, board *m.Board) error {
+func (r *sqliteBoardRepo) Update(ctx context.Context, key string, board *m.Board) error {
 	query := `
 		UPDATE boards
 		SET caption = ?, description = ?
@@ -72,7 +72,7 @@ func (r *t) Update(ctx context.Context, key string, board *m.Board) error {
 	return nil
 }
 
-func (r *t) Delete(ctx context.Context, key string) error {
+func (r *sqliteBoardRepo) Delete(ctx context.Context, key string) error {
 	query := `
 		DELETE FROM boards
 		WHERE key = ?
@@ -81,7 +81,7 @@ func (r *t) Delete(ctx context.Context, key string) error {
 	return err
 }
 
-func (r *t) List(ctx context.Context) ([]*m.Board, error) {
+func (r *sqliteBoardRepo) List(ctx context.Context) ([]*m.Board, error) {
 	query := `
 		SELECT * FROM boards
 		ORDER BY key
