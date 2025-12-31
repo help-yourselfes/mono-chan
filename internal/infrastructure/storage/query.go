@@ -2,11 +2,11 @@ package storage
 
 var Query = `
 PRAGMA FOREIGN_KEYS = ON;
-parseTime=true;
+PRAGMA journal_mode=WAL;
 
 
 CREATE TABLE IF NOT EXISTS boards (
-	key TEXT PRIMARY KEY UNIQUE, 
+	"key" TEXT PRIMARY KEY UNIQUE, 
 	caption TEXT,
 	description TEXT,
 	last_post_id INTEGER
@@ -15,23 +15,26 @@ CREATE TABLE IF NOT EXISTS boards (
 CREATE TABLE IF NOT EXISTS threads (
 	global_id INTEGER PRIMARY KEY UNIQUE,
 	post_id INTEGER UNIQUE,
-	FOREIGN KEY(board_key) REFERENCES boards(key) ON DELETE CASCADE,
+	board_key TEXT NOT NULL,
 	caption TEXT,
-	reply_count INTEGER
-)
+	reply_count INTEGER,
+	FOREIGN KEY(board_key) REFERENCES boards("key") ON DELETE CASCADE
+);
 
 CREATE TABLE IF NOT EXISTS posts (
 	global_id INTEGER PRIMARY KEY UNIQUE,
-	FOREIGN KEY(board_key) REFERENCES boards(key),
-	FOREIGN KEY(thread_id) REFERENCES threads(id) ON DELETE CASCADE,
+	board_key TEXT NOT NULL,
+	thread_id INTEGER,
 	id INTEGER UNIQUE,
 	text TEXT,
 	media_json TEXT,
 	password_hash TEXT,
 	created_at TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	updated_at TEXT DEFAULT NULL,
-	is_op INTEGER 
-)
+	is_op INTEGER,
+	FOREIGN KEY(board_key) REFERENCES boards("key"),
+	FOREIGN KEY(thread_id) REFERENCES threads(post_id) ON DELETE CASCADE
+);
 
 CREATE TRIGGER IF NOT EXISTS update_post_timestamp 
 AFTER UPDATE ON posts

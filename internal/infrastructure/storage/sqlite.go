@@ -14,11 +14,6 @@ func InitSQLiteStorage(dbPath string) (*sql.DB, error) {
 		return nil, err
 	}
 
-	db.Exec(`
-		PRAGMA foreign_keys = ON;
-		PRAGMA journal_mode=WAL;
-	`)
-
 	if _, err := db.Exec(Query); err != nil {
 		return nil, err
 	}

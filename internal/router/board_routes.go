@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/helpyourselfes/mono-chan/internal/app/board/handlers"
 	"github.com/helpyourselfes/mono-chan/internal/app/board/service"
+	"github.com/helpyourselfes/mono-chan/internal/infrastructure/repo"
 )
 
 func boardRoutes(log *slog.Logger, storage *sql.DB) chi.Router {

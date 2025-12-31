@@ -1,4 +1,4 @@
-package board_repo
+package repo
 
 import (
 	"context"
