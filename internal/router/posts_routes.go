@@ -18,6 +18,6 @@ func postRoutes(log *slog.Logger, storage *sql.DB) chi.Router {
 	r := chi.NewRouter()
 
 	r.Post("/", handler.CreatePost(log))
-
+	// TODO: GetById, Update, Delete, List
 	return r
 }
