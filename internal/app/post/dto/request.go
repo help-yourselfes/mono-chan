@@ -10,9 +10,19 @@ type CreatePostRequest struct {
 }
 
 type UpdatePostRequest struct {
-	ID         int64
+	ID         int64    `json:"id"`
 	BoardKey   string   `json:"board_key"`
 	Text       string   `json:"text"`
 	MediaLinks []string `json:"media_links"`
 	Password   string   `json:"password"`
+}
+
+type AdminDeletePostRequest struct {
+	ID       int64  `json:"id"`
+	BoardKey string `json:"board_key"`
+}
+
+type UserDeletePostRequest struct {
+	AdminDeletePostRequest
+	Password string `json:"password"`
 }
