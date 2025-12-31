@@ -15,7 +15,7 @@ func SetupRouter(log *slog.Logger, storage *sql.DB) *chi.Mux {
 	api.Use(middleware.Logger)
 
 	api.Mount("/boards", boardRoutes(log, storage))
-	api.Mount("/posts", postRoutes(storage))
+	api.Mount("/posts", postRoutes(log, storage))
 	// api.Route("/view")
 
 	return api
