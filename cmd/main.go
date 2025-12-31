@@ -25,7 +25,7 @@ func main() {
 		log.Error("failed to init storage", sl.Err(err))
 		return
 	}
-	r := router.SetupRouter(storage)
+	r := router.SetupRouter(log, storage)
 
 	log.Info("server started", slog.String("address", cfg.HTTPServer.Address))
 
