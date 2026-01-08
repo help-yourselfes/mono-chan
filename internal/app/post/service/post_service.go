@@ -7,22 +7,34 @@ import (
 	"github.com/helpyourselfes/mono-chan/internal/app"
 	"github.com/helpyourselfes/mono-chan/internal/app/post/dto"
 	"github.com/helpyourselfes/mono-chan/internal/app/post/model"
+	threadModel "github.com/helpyourselfes/mono-chan/internal/app/thread/model"
 	"github.com/helpyourselfes/mono-chan/internal/pkg/customErrors"
 	"github.com/helpyourselfes/mono-chan/internal/pkg/security"
 
-	_ "github.com/helpyourselfes/mono-chan/internal/app/board/repo"
-	_ "github.com/helpyourselfes/mono-chan/internal/app/post/repo"
-	_ "github.com/helpyourselfes/mono-chan/internal/app/thread/repo"
+	postRepo "github.com/helpyourselfes/mono-chan/internal/app/post/repo"
 )
 
+type boardCounter interface {
+	IncPosts(ctx context.Context, boardKey string) (int64, error)
+}
+
+type threadRepo interface {
+	GetByPostID(ctx context.Context, boardKey string, postID int64) (*threadModel.Thread, error)
+	Reply(ctx context.Context, boardKey string, postID int64) error
+}
+
 type PostService struct {
-	app.Repos
+	boards    boardCounter
+	threads   threadRepo
+	posts     postRepo.PostRepo
 	txManager app.TransactionManager
 }
 
 func NewPostService(repos *app.Repos, tx app.TransactionManager) *PostService {
 	return &PostService{
-		Repos:     *repos,
+		boards:    repos.Boards,
+		threads:   repos.Threads,
+		posts:     repos.Posts,
 		txManager: tx,
 	}
 }
@@ -55,12 +67,12 @@ func (s *PostService) Create(ctx context.Context, reqPost *dto.CreatePostRequest
 	err := s.txManager.WithinTransaction(ctx, func(ctx context.Context) error {
 		var err error
 
-		id, err = s.Boards.IncPosts(ctx, post.BoardKey)
+		id, err = s.boards.IncPosts(ctx, post.BoardKey)
 		if err != nil {
 			return err
 		}
 
-		thread, err := s.Threads.GetByPostID(ctx, post.BoardKey, reqPost.RootPostID)
+		thread, err := s.threads.GetByPostID(ctx, post.BoardKey, reqPost.RootPostID)
 		if err != nil {
 			return err
 		}
@@ -68,12 +80,12 @@ func (s *PostService) Create(ctx context.Context, reqPost *dto.CreatePostRequest
 		post.ID = id
 		post.ThreadID = thread.GlobalID
 
-		_, err = s.Posts.Create(ctx, post)
+		_, err = s.posts.Create(ctx, post)
 		if err != nil {
 			return err
 		}
 
-		return s.Threads.Reply(ctx, post.BoardKey, thread.PostID)
+		return s.threads.Reply(ctx, post.BoardKey, thread.PostID)
 	})
 
 	post.ID = id
@@ -82,7 +94,7 @@ func (s *PostService) Create(ctx context.Context, reqPost *dto.CreatePostRequest
 }
 
 func (s *PostService) GetById(ctx context.Context, boardKey string, id int64) (*dto.PostResponse, error) {
-	post, err := s.Posts.GetById(ctx, boardKey, id)
+	post, err := s.posts.GetById(ctx, boardKey, id)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +104,7 @@ func (s *PostService) GetById(ctx context.Context, boardKey string, id int64) (*
 }
 
 func (s *PostService) Update(ctx context.Context, reqPost *dto.UpdatePostRequest) error {
-	post, err := s.Posts.GetById(ctx, reqPost.BoardKey, reqPost.ID)
+	post, err := s.posts.GetById(ctx, reqPost.BoardKey, reqPost.ID)
 	if err != nil {
 		return err
 	}
@@ -109,11 +121,11 @@ func (s *PostService) Update(ctx context.Context, reqPost *dto.UpdatePostRequest
 		return customErrors.ErrIncorectPassword
 	}
 
-	return s.Posts.Update(ctx, reqPost)
+	return s.posts.Update(ctx, reqPost)
 }
 
 func (s *PostService) DeleteByUser(ctx context.Context, boardKey string, id int64, password string) error {
-	post, err := s.Posts.GetById(ctx, boardKey, id)
+	post, err := s.posts.GetById(ctx, boardKey, id)
 
 	if err != nil {
 		return err
@@ -134,11 +146,11 @@ func (s *PostService) DeleteByUser(ctx context.Context, boardKey string, id int6
 		return customErrors.ErrIncorectPassword
 	}
 
-	return s.Posts.Delete(ctx, post.GlobalID)
+	return s.posts.Delete(ctx, post.GlobalID)
 }
 
 func (s *PostService) DeleteByAdmin(ctx context.Context, boardKey string, id int64) error {
-	post, err := s.Posts.GetById(ctx, boardKey, id)
+	post, err := s.posts.GetById(ctx, boardKey, id)
 	if err != nil {
 		return err
 	}
@@ -146,11 +158,11 @@ func (s *PostService) DeleteByAdmin(ctx context.Context, boardKey string, id int
 	if post.ID == post.RootPostID {
 		return customErrors.ErrPostIsRoot
 	}
-	return s.Posts.Delete(ctx, post.GlobalID)
+	return s.posts.Delete(ctx, post.GlobalID)
 }
 
 func (s *PostService) List(ctx context.Context, boardKey string, threadId int64) ([]*dto.PostResponse, error) {
-	posts, err := s.Posts.List(ctx, boardKey, threadId)
+	posts, err := s.posts.List(ctx, boardKey, threadId)
 	if err != nil {
 		return nil, err
 	}

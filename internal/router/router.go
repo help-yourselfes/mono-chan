@@ -31,8 +31,8 @@ func SetupRouter(log *slog.Logger, db *sql.DB) *chi.Mux {
 
 	txManager := storage.NewSqlTxManager(db)
 
-	api.Mount("/boards", boardRoutes(log, boardRepo))
-	api.Mount("/posts", postRoutes(log, repos, txManager))
+	api.Mount("/boards", boardRoutes(boardRepo))
+	api.Mount("/posts", postRoutes(repos, txManager))
 	api.Mount("/threads", threadRoutes(repos, txManager))
 	// api.Route("/view")
 

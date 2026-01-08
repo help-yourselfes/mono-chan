@@ -7,13 +7,13 @@ import (
 
 	"github.com/go-chi/render"
 	"github.com/helpyourselfes/mono-chan/internal/app/thread/dto"
+	"github.com/helpyourselfes/mono-chan/internal/logger"
 	"github.com/helpyourselfes/mono-chan/internal/logger/sl"
 	"github.com/helpyourselfes/mono-chan/internal/pkg/customErrors"
-	"github.com/helpyourselfes/mono-chan/internal/router/middleware"
 )
 
 func (h *ThreadHandler) DeleteByAdmin(w http.ResponseWriter, r *http.Request) {
-	log := middleware.FromContext(r.Context())
+	log := logger.FromContext(r.Context())
 	const op = "thread.handlers.adminDelete"
 	log = log.With(slog.String("op", op))
 

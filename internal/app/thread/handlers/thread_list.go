@@ -6,13 +6,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"github.com/helpyourselfes/mono-chan/internal/logger"
 	"github.com/helpyourselfes/mono-chan/internal/logger/sl"
-	"github.com/helpyourselfes/mono-chan/internal/router/middleware"
 )
 
 func (h *ThreadHandler) List(w http.ResponseWriter, r *http.Request) {
 	const op = "thread.handlers.list"
-	log := middleware.FromContext(r.Context())
+	log := logger.FromContext(r.Context())
 	log = log.With(slog.String("op", op))
 
 	boardKey := chi.URLParam(r, "boardKey")
