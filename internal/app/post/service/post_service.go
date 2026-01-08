@@ -7,6 +7,7 @@ import (
 	"github.com/helpyourselfes/mono-chan/internal/app"
 	"github.com/helpyourselfes/mono-chan/internal/app/post/dto"
 	"github.com/helpyourselfes/mono-chan/internal/app/post/model"
+	"github.com/helpyourselfes/mono-chan/internal/app/post/repo"
 	threadModel "github.com/helpyourselfes/mono-chan/internal/app/thread/model"
 	"github.com/helpyourselfes/mono-chan/internal/pkg/customErrors"
 	"github.com/helpyourselfes/mono-chan/internal/pkg/security"
@@ -30,11 +31,11 @@ type PostService struct {
 	txManager app.TransactionManager
 }
 
-func NewPostService(repos *app.Repos, tx app.TransactionManager) *PostService {
+func NewPostService(boards boardCounter, threads threadRepo, posts repo.PostRepo, tx app.TransactionManager) *PostService {
 	return &PostService{
-		boards:    repos.Boards,
-		threads:   repos.Threads,
-		posts:     repos.Posts,
+		boards:    boards,
+		threads:   threads,
+		posts:     posts,
 		txManager: tx,
 	}
 }

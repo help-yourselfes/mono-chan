@@ -6,7 +6,9 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"github.com/helpyourselfes/mono-chan/internal/app/board/dto"
 	"github.com/helpyourselfes/mono-chan/internal/app/board/model"
 	valid "github.com/helpyourselfes/mono-chan/internal/app/board/validator"
 	"github.com/helpyourselfes/mono-chan/internal/logger"
@@ -18,7 +20,12 @@ func (h *BoardHandler) UpdateBoard(w http.ResponseWriter, r *http.Request) {
 	log := logger.FromContext(r.Context())
 	const op = "boards.handlers.update"
 	log = log.With(slog.String("op", op))
-	var req BoardRequest
+	var req dto.UpdateBoardRequest
+
+	boardKey := chi.URLParam(r, "boardKey")
+	if boardKey == "" {
+		render.JSON(w, r, "board key is invalid")
+	}
 
 	err := render.DecodeJSON(r.Body, &req)
 	if err != nil {
@@ -27,7 +34,7 @@ func (h *BoardHandler) UpdateBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key := req.Key
+	key := boardKey
 	if !valid.IsValidKey(key) {
 		log.Error("key is invalid")
 		render.JSON(w, r, resp.Error("key is invalid"))
@@ -35,7 +42,7 @@ func (h *BoardHandler) UpdateBoard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	board := &model.Board{
-		Key:         req.Key,
+		Key:         key,
 		Caption:     req.Caption,
 		Description: req.Description,
 	}

@@ -30,11 +30,11 @@ type ThreadService struct {
 	txManager app.TransactionManager
 }
 
-func NewThreadService(repos *app.Repos, tx app.TransactionManager) *ThreadService {
+func NewThreadService(boards boardCounter, threads threadRepo.ThreadRepo, posts postRepo, tx app.TransactionManager) *ThreadService {
 	return &ThreadService{
-		boards:    repos.Boards,
-		threads:   repos.Threads,
-		posts:     repos.Posts,
+		boards:    boards,
+		threads:   threads,
+		posts:     posts,
 		txManager: tx,
 	}
 }
