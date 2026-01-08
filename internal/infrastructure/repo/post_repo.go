@@ -4,11 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 
 	"github.com/helpyourselfes/mono-chan/internal/app/post/dto"
 	"github.com/helpyourselfes/mono-chan/internal/app/post/model"
 	"github.com/helpyourselfes/mono-chan/internal/app/post/repo"
+	"github.com/helpyourselfes/mono-chan/internal/infrastructure/storage"
 	"github.com/helpyourselfes/mono-chan/internal/pkg/customErrors"
 	"github.com/mattn/go-sqlite3"
 )
@@ -20,8 +20,8 @@ type p = sqlitePostRepo
 
 var _ repo.PostRepo = &p{}
 
-func NewSQLitePostRepo(db *sql.DB) *p {
-	return &p{db: db}
+func NewSQLitePostRepo(db *sql.DB) *sqlitePostRepo {
+	return &sqlitePostRepo{db: db}
 }
 
 func (r *p) Create(ctx context.Context, post *model.Post) (int64, error) {
@@ -29,41 +29,34 @@ func (r *p) Create(ctx context.Context, post *model.Post) (int64, error) {
 	if err != nil {
 		return -1, err
 	}
-	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelDefault})
-	if err != nil {
-		return -1, err
-	}
 
-	defer tx.Rollback()
+	ex := storage.GetExecutor(ctx, r.db)
 
-	var localId int64
-	queryUpdate := `
-	UPDATE boards GET last_post_id = last_post_id + 1
-	WHERE key = ? RETURNING last_post_id
-	`
-	err = tx.QueryRowContext(ctx, queryUpdate, post.BoardKey).Scan(&localId)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return -1, customErrors.ErrNotFound
-		}
-		return -1, err
-	}
-
-	queryInsert := `
+	query := `
 	INSERT INTO posts (
-		board_key, thread_id, id, text, media_json, password_hash, created_at, updated_at, is_op
-	) VALUES (?,?,?,?,?,?,?,?,?)
+		board_key,
+		thread_id,
+		root_post_id,
+		id,
+		text,
+		media_json,
+		password_hash,
+		created_at,
+		updated_at,
+		is_op
+	) VALUES (?,?,?,?,?,?,?,?,?,?)
 	`
 
-	_, err = tx.ExecContext(ctx, queryInsert,
+	_, err = ex.ExecContext(ctx, query,
 		post.BoardKey,
 		post.ThreadID,
-		localId,
+		post.RootPostID,
+		post.ID,
 		post.Text,
 		mediaJSON,
 		post.PasswordHash,
 		post.CreatedAt,
-		*post.UpdatedAt,
+		post.UpdatedAt,
 		post.IsOP,
 	)
 
@@ -74,27 +67,34 @@ func (r *p) Create(ctx context.Context, post *model.Post) (int64, error) {
 		return -1, err
 	}
 
-	if err := tx.Commit(); err != nil {
-		return -1, nil
-	}
-
-	return localId, nil
+	return post.ID, nil
 }
 func (r *p) GetById(ctx context.Context, boardKey string, id int64) (*model.Post, error) {
+	ex := storage.GetExecutor(ctx, r.db)
 	query := `
 	SELECT
-		global_id, board_key, thread_id, id, text, media_json,
-		password_hash, created_at, updated_at, is_op
+		global_id,
+		board_key,
+		thread_id,
+		root_post_id,
+		id,
+		text,
+		media_json,
+		password_hash,
+		created_at,
+		updated_at,
+		is_op
 	FROM posts
 	WHERE board_key = ? AND id = ?`
 
 	var post model.Post
 	var mediaJSON sql.NullString
 
-	err := r.db.QueryRowContext(ctx, query, boardKey, id).Scan(
+	err := ex.QueryRowContext(ctx, query, boardKey, id).Scan(
 		&post.GlobalID,
 		&post.BoardKey,
 		&post.ThreadID,
+		&post.RootPostID,
 		&post.ID,
 		&post.Text,
 		&mediaJSON,
@@ -103,10 +103,10 @@ func (r *p) GetById(ctx context.Context, boardKey string, id int64) (*model.Post
 		&post.UpdatedAt,
 		&post.IsOP,
 	)
+	if err == sql.ErrNoRows {
+		return nil, customErrors.ErrNotFound
+	}
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, customErrors.ErrNotFound
-		}
 		return nil, err
 	}
 
@@ -122,33 +122,46 @@ func (r *p) Update(ctx context.Context, post *dto.UpdatePostRequest) error {
 	if err != nil {
 		return err
 	}
+	ex := storage.GetExecutor(ctx, r.db)
 	query := `
 	UPDATE posts SET
-	text = ?,
-	media_json = ?	
+		text = ?,
+		media_json = ?	
 	WHERE board_key = ? AND id = ? 
 	`
-	_, err = r.db.ExecContext(ctx, query, post.Text, mediaJSON, post.BoardKey, post.ID)
+	_, err = ex.ExecContext(ctx, query, post.Text, mediaJSON, post.BoardKey, post.ID)
 	return err
 }
 func (r *p) Delete(ctx context.Context, globalId int64) error {
-	query := `--sql
+	ex := storage.GetExecutor(ctx, r.db)
+	query := `
 	DELETE FROM posts
-	WHERE global_id = ?`
-	_, err := r.db.ExecContext(ctx, query, globalId)
+	WHERE global_id = ?
+	`
+	_, err := ex.ExecContext(ctx, query, globalId)
 	return err
 }
 func (r *p) List(ctx context.Context, boardKey string, threadId int64) ([]*model.Post, error) {
+	ex := storage.GetExecutor(ctx, r.db)
 	query := `
 	SELECT
-		global_id, board_key, thread_id, id, text, media_json,
-		password_hash, created_at, updated_at, is_op
+		global_id,
+		board_key,
+		thread_id,
+		root_post_id,
+		id,
+		text,
+		media_json,
+		password_hash, 
+		created_at,
+		updated_at,
+		is_op
 	FROM posts
-	WHERE board_key = ? AND thread_id = ?`
+	WHERE board_key = ? AND root_post_id = ?`
 
 	var mediaJSON sql.NullString
 
-	rows, err := r.db.QueryContext(ctx, query, boardKey, threadId)
+	rows, err := ex.QueryContext(ctx, query, boardKey, threadId)
 	if err != nil {
 		return nil, err
 	}
@@ -161,6 +174,7 @@ func (r *p) List(ctx context.Context, boardKey string, threadId int64) ([]*model
 			&post.GlobalID,
 			&post.BoardKey,
 			&post.ThreadID,
+			&post.RootPostID,
 			&post.ID,
 			&post.Text,
 			&mediaJSON,

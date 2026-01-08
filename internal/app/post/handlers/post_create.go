@@ -13,7 +13,7 @@ import (
 
 func (h *PostHandler) CreatePost(log *slog.Logger) http.HandlerFunc {
 	const op = "post.handlers.create"
-	log.With(slog.String("op", op))
+	log = log.With(slog.String("op", op))
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req dto.CreatePostRequest

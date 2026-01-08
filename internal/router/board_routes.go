@@ -1,18 +1,16 @@
 package router
 
 import (
-	"database/sql"
 	"log/slog"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/helpyourselfes/mono-chan/internal/app/board/handlers"
+	"github.com/helpyourselfes/mono-chan/internal/app/board/repo"
 	"github.com/helpyourselfes/mono-chan/internal/app/board/service"
-	"github.com/helpyourselfes/mono-chan/internal/infrastructure/repo"
 )
 
-func boardRoutes(log *slog.Logger, storage *sql.DB) chi.Router {
-	repo := repo.NewSQLiteBoardRepo(storage)
+func boardRoutes(log *slog.Logger, repo repo.BoardRepo) chi.Router {
 	service := service.NewBoardService(repo)
 	handler := handlers.NewBoardHandler(service)
 

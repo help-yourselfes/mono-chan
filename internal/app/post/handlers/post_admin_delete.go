@@ -33,6 +33,13 @@ func (h *PostHandler) AdminDelete(log *slog.Logger) http.HandlerFunc {
 			render.JSON(w, r, msg)
 			return
 		}
+
+		if errors.Is(err, customErrors.ErrPostIsRoot) {
+			const msg = "make thread deletion request, not post"
+			log.Error(msg)
+			render.JSON(w, r, msg)
+			return
+		}
 		if err != nil {
 			const msg = "failed to decode request"
 			log.Error(msg, sl.Err(err))

@@ -12,4 +12,5 @@ type BoardRepo interface {
 	Update(ctx context.Context, key string, board *m.Board) error
 	Delete(ctx context.Context, key string) error
 	List(ctx context.Context) ([]*m.Board, error)
+	IncPosts(ctx context.Context, boardKey string) (int64, error)
 }

@@ -1,7 +1,7 @@
 package dto
 
 type CreatePostRequest struct {
-	ThreadID   int64    `json:"thread_id"`
+	RootPostID int64    `json:"thread_id"`
 	BoardKey   string   `json:"board_key"`
 	Text       string   `json:"text"`
 	MediaLinks []string `json:"media_links"`
@@ -18,8 +18,8 @@ type UpdatePostRequest struct {
 }
 
 type AdminDeletePostRequest struct {
-	ID       int64  `json:"id"`
 	BoardKey string `json:"board_key"`
+	ID       int64  `json:"id"`
 }
 
 type UserDeletePostRequest struct {

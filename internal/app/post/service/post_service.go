@@ -4,27 +4,34 @@ import (
 	"context"
 	"time"
 
+	"github.com/helpyourselfes/mono-chan/internal/app"
 	"github.com/helpyourselfes/mono-chan/internal/app/post/dto"
 	"github.com/helpyourselfes/mono-chan/internal/app/post/model"
-	"github.com/helpyourselfes/mono-chan/internal/app/post/repo"
 	"github.com/helpyourselfes/mono-chan/internal/pkg/customErrors"
 	"github.com/helpyourselfes/mono-chan/internal/pkg/security"
+
+	_ "github.com/helpyourselfes/mono-chan/internal/app/board/repo"
+	_ "github.com/helpyourselfes/mono-chan/internal/app/post/repo"
+	_ "github.com/helpyourselfes/mono-chan/internal/app/thread/repo"
 )
 
 type PostService struct {
-	repo repo.PostRepo
+	app.Repos
+	txManager app.TransactionManager
 }
 
-type p = PostService
-
-func NewPostService(repo repo.PostRepo) *p {
-	return &p{repo: repo}
+func NewPostService(repos *app.Repos, tx app.TransactionManager) *PostService {
+	return &PostService{
+		Repos:     *repos,
+		txManager: tx,
+	}
 }
 
-func (s *p) Create(ctx context.Context, reqPost *dto.CreatePostRequest) (*dto.PostResponse, error) {
+func (s *PostService) Create(ctx context.Context, reqPost *dto.CreatePostRequest) (*dto.PostResponse, error) {
 	if !(reqPost.Text != "" || len(reqPost.MediaLinks) != 0) {
 		return nil, customErrors.ErrInvalidInput
 	}
+
 	var passwordHash string
 
 	if reqPost.Password != "" {
@@ -36,25 +43,46 @@ func (s *p) Create(ctx context.Context, reqPost *dto.CreatePostRequest) (*dto.Po
 	}
 	now := time.Now()
 	post := &model.Post{
-		ThreadID:     reqPost.ThreadID,
+		RootPostID:   reqPost.RootPostID,
+		BoardKey:     reqPost.BoardKey,
 		Text:         reqPost.Text,
 		PasswordHash: passwordHash,
 		MediaLinks:   reqPost.MediaLinks,
 		CreatedAt:    now,
+		UpdatedAt:    nil,
 	}
+	var id int64
+	err := s.txManager.WithinTransaction(ctx, func(ctx context.Context) error {
+		var err error
 
-	id, err := s.repo.Create(ctx, post)
-	if err != nil {
-		return nil, err
-	}
+		id, err = s.Boards.IncPosts(ctx, post.BoardKey)
+		if err != nil {
+			return err
+		}
+
+		thread, err := s.Threads.GetByPostID(ctx, post.BoardKey, reqPost.RootPostID)
+		if err != nil {
+			return err
+		}
+
+		post.ID = id
+		post.ThreadID = thread.GlobalID
+
+		_, err = s.Posts.Create(ctx, post)
+		if err != nil {
+			return err
+		}
+
+		return s.Threads.Reply(ctx, post.BoardKey, thread.PostID)
+	})
 
 	post.ID = id
 	resPost := dto.ToPostResponse(post)
-	return resPost, nil
+	return resPost, err
 }
 
-func (s *p) GetById(ctx context.Context, boardKey string, id int64) (*dto.PostResponse, error) {
-	post, err := s.repo.GetById(ctx, boardKey, id)
+func (s *PostService) GetById(ctx context.Context, boardKey string, id int64) (*dto.PostResponse, error) {
+	post, err := s.Posts.GetById(ctx, boardKey, id)
 	if err != nil {
 		return nil, err
 	}
@@ -63,8 +91,8 @@ func (s *p) GetById(ctx context.Context, boardKey string, id int64) (*dto.PostRe
 	return resPost, nil
 }
 
-func (s *p) Update(ctx context.Context, reqPost *dto.UpdatePostRequest) error {
-	post, err := s.repo.GetById(ctx, reqPost.BoardKey, reqPost.ID)
+func (s *PostService) Update(ctx context.Context, reqPost *dto.UpdatePostRequest) error {
+	post, err := s.Posts.GetById(ctx, reqPost.BoardKey, reqPost.ID)
 	if err != nil {
 		return err
 	}
@@ -81,17 +109,20 @@ func (s *p) Update(ctx context.Context, reqPost *dto.UpdatePostRequest) error {
 		return customErrors.ErrIncorectPassword
 	}
 
-	return s.repo.Update(ctx, reqPost)
+	return s.Posts.Update(ctx, reqPost)
 }
 
-func (s *p) DeleteByUser(ctx context.Context, boardKey string, id int64, password string) error {
-	post, err := s.repo.GetById(ctx, boardKey, id)
+func (s *PostService) DeleteByUser(ctx context.Context, boardKey string, id int64, password string) error {
+	post, err := s.Posts.GetById(ctx, boardKey, id)
+
 	if err != nil {
 		return err
 	}
-
 	if !post.HasPassword() {
 		return customErrors.ErrNoPasswordSet
+	}
+	if post.ID == post.RootPostID {
+		return customErrors.ErrPostIsRoot
 	}
 
 	equal, err := security.Verify(password, post.PasswordHash)
@@ -103,19 +134,23 @@ func (s *p) DeleteByUser(ctx context.Context, boardKey string, id int64, passwor
 		return customErrors.ErrIncorectPassword
 	}
 
-	return s.repo.Delete(ctx, post.GlobalID)
+	return s.Posts.Delete(ctx, post.GlobalID)
 }
 
-func (s *p) DeleteByAdmin(ctx context.Context, boardKey string, id int64) error {
-	post, err := s.repo.GetById(ctx, boardKey, id)
+func (s *PostService) DeleteByAdmin(ctx context.Context, boardKey string, id int64) error {
+	post, err := s.Posts.GetById(ctx, boardKey, id)
 	if err != nil {
 		return err
 	}
-	return s.repo.Delete(ctx, post.GlobalID)
+
+	if post.ID == post.RootPostID {
+		return customErrors.ErrPostIsRoot
+	}
+	return s.Posts.Delete(ctx, post.GlobalID)
 }
 
-func (s *p) List(ctx context.Context, boardKey string, threadId int64) ([]*dto.PostResponse, error) {
-	posts, err := s.repo.List(ctx, boardKey, threadId)
+func (s *PostService) List(ctx context.Context, boardKey string, threadId int64) ([]*dto.PostResponse, error) {
+	posts, err := s.Posts.List(ctx, boardKey, threadId)
 	if err != nil {
 		return nil, err
 	}

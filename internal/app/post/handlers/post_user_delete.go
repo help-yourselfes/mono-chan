@@ -17,7 +17,6 @@ func (h *PostHandler) UserDelete(log *slog.Logger) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req dto.UserDeletePostRequest
-
 		err := render.DecodeJSON(r.Body, &req)
 		if err != nil {
 			const msg = "failed to decode request"
@@ -30,6 +29,12 @@ func (h *PostHandler) UserDelete(log *slog.Logger) http.HandlerFunc {
 
 		if errors.Is(err, customErrors.ErrIncorectPassword) {
 			const msg = "password is incorect"
+			log.Error(msg)
+			render.JSON(w, r, msg)
+			return
+		}
+		if errors.Is(err, customErrors.ErrPostIsRoot) {
+			const msg = "make thread deletion request, not post"
 			log.Error(msg)
 			render.JSON(w, r, msg)
 			return
@@ -47,10 +52,11 @@ func (h *PostHandler) UserDelete(log *slog.Logger) http.HandlerFunc {
 			return
 		}
 		if err != nil {
-			const msg = "failed to decode request"
+			const msg = "failed to delete post"
 			log.Error(msg, sl.Err(err))
 			render.JSON(w, r, msg)
 			return
 		}
+		render.JSON(w, r, "ok")
 	}
 }

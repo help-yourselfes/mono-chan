@@ -6,6 +6,7 @@ type Post struct {
 	GlobalID     int64
 	BoardKey     string
 	ThreadID     int64
+	RootPostID   int64
 	ID           int64
 	Text         string
 	MediaLinks   []string

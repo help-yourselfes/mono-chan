@@ -4,99 +4,199 @@ import (
 	"context"
 	"time"
 
-	m "github.com/helpyourselfes/mono-chan/internal/app/thread/model"
-	"github.com/helpyourselfes/mono-chan/internal/app/thread/repo"
+	"github.com/helpyourselfes/mono-chan/internal/app"
+	postDTO "github.com/helpyourselfes/mono-chan/internal/app/post/dto"
+	postModel "github.com/helpyourselfes/mono-chan/internal/app/post/model"
+	threadDTO "github.com/helpyourselfes/mono-chan/internal/app/thread/dto"
+	threadModel "github.com/helpyourselfes/mono-chan/internal/app/thread/model"
 	"github.com/helpyourselfes/mono-chan/internal/pkg/customErrors"
 	"github.com/helpyourselfes/mono-chan/internal/pkg/security"
 )
 
 type ThreadService struct {
-	repo repo.ThreadRepo
+	app.Repos
+	txManager app.TransactionManager
 }
 
-type t = ThreadService
-
-func NewThreadService(repo repo.ThreadRepo) *t {
-	return &t{repo: repo}
-}
-
-func (s *t) CreateThread(ctx context.Context, thread *m.Thread) (int64, error) {
-	if /* at least one field must be filled*/
-	!(thread.Caption != "" ||
-		thread.Text != "" ||
-		len(thread.MediaLinks) != 0) {
-		return -1, customErrors.ErrInvalidInput
+func NewThreadService(repos *app.Repos, tx app.TransactionManager) *ThreadService {
+	return &ThreadService{
+		Repos:     *repos,
+		txManager: tx,
 	}
+}
 
-	if thread.Password != "" {
-		hash, err := security.Hash(thread.Password)
+func (s *ThreadService) Create(ctx context.Context,
+	reqPost *postDTO.CreatePostRequest,
+	reqThread *threadDTO.CreateThreadRequest) (*threadDTO.ThreadResponse, error) {
+
+	var passwordHash string
+
+	if reqPost.Password != "" {
+		var err error
+		passwordHash, err = security.Hash(reqPost.Password)
 		if err != nil {
-			return -1, err
+			return nil, err
 		}
-		thread.Password = hash
 	}
 
-	return s.repo.Create(ctx, thread)
-}
+	thread := &threadModel.Thread{
+		PostID:       -1,
+		UserHash:     reqThread.UserHash,
+		Caption:      reqThread.Caption,
+		BoardKey:     reqThread.BoardKey,
+		ReplyCount:   0,
+		PasswordHash: passwordHash,
+	}
+	err := s.txManager.WithinTransaction(ctx, func(ctx context.Context) error {
+		postId, err := s.Boards.IncPosts(ctx, reqPost.BoardKey)
+		if err != nil {
+			return err
+		}
 
-func (s *t) GetThreadByID(ctx context.Context, boardKey string, id int64) (*m.Thread, error) {
-	return s.repo.GetByID(ctx, id)
-}
+		thread.PostID = postId
 
-func (s *t) UpdateThread(ctx context.Context, inputThread *m.Thread) error {
-	existingThread, err := s.repo.GetByID(ctx, inputThread.Id)
+		threadId, err := s.Threads.Create(ctx, thread)
+		thread.GlobalID = threadId
+		if err != nil {
+			return err
+		}
+
+		now := time.Now()
+		post := &postModel.Post{
+			BoardKey:     reqPost.BoardKey,
+			ID:           postId,
+			ThreadID:     threadId,
+			RootPostID:   postId,
+			Text:         reqPost.Text,
+			MediaLinks:   reqPost.MediaLinks,
+			PasswordHash: passwordHash,
+			CreatedAt:    now,
+			IsOP:         true,
+		}
+
+		_, err = s.Posts.Create(ctx, post)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
 	if err != nil {
-		return customErrors.ErrNotFound
+		return nil, err
 	}
 
-	if existingThread.Password == "" {
-		return customErrors.ErrUpdateToUpdate
+	resThread := threadDTO.ToThreadResponse(thread)
+	return resThread, nil
+}
+
+func (s *ThreadService) GetByPostID(ctx context.Context, boardKey string, id int64) (*threadDTO.ThreadResponse, error) {
+	thread, err := s.Threads.GetByPostID(ctx, boardKey, id)
+	if err != nil {
+		return nil, err
+	}
+	resThread := threadDTO.ToThreadResponse(thread)
+	return resThread, nil
+}
+
+func (s *ThreadService) Update(ctx context.Context, boardKey string, reqThread *threadDTO.UpdateThreadRequest) error {
+	thread, err := s.Threads.GetByPostID(ctx, boardKey, reqThread.PostID)
+	if err != nil {
+		return err
+	}
+	if thread.PasswordHash == "" {
+		return customErrors.ErrNoPasswordSet
 	}
 
-	eq, err := security.Verify(inputThread.Password, existingThread.Password)
+	eq, err := security.Verify(reqThread.Password, thread.PasswordHash)
+	if !eq {
+		return customErrors.ErrIncorectPassword
+	}
+	if err != nil {
+		return err
+	}
+
+	newThread := &threadModel.Thread{
+		BoardKey: boardKey,
+		PostID:   reqThread.PostID,
+		Caption:  reqThread.Caption,
+	}
+
+	return s.Threads.Update(ctx, newThread)
+}
+
+func (s *ThreadService) GetWithPost(ctx context.Context, boardKey string, postID int64) (*threadDTO.ThreadPostResponse, error) {
+	thread, err := s.Threads.GetByPostID(ctx, boardKey, postID)
+	if err != nil {
+		return nil, err
+	}
+
+	post, err := s.Posts.GetById(ctx, boardKey, postID)
+	if err != nil {
+		return nil, err
+	}
+
+	var res = &threadDTO.ThreadPostResponse{
+		Post:   *postDTO.ToPostResponse(post),
+		Thread: *threadDTO.ToThreadResponse(thread),
+	}
+	return res, err
+}
+
+func (s *ThreadService) DeleteByAdmin(ctx context.Context, boardKey string, id int64) error {
+	thread, err := s.Threads.GetByPostID(ctx, boardKey, id)
+	if err != nil {
+		return err
+	}
+
+	return s.Threads.Delete(ctx, thread.GlobalID)
+}
+
+func (s *ThreadService) DeleteByUser(ctx context.Context, boardKey string, id int64, password string) error {
+	thread, err := s.Threads.GetByPostID(ctx, boardKey, id)
+	if err != nil {
+		return err
+	}
+	if thread.PasswordHash == "" {
+		return customErrors.ErrNoPasswordSet
+	}
+	eq, err := security.Verify(password, thread.PasswordHash)
 	if err != nil {
 		return err
 	}
 	if !eq {
-		return customErrors.ErrInvalidPassword
+		return customErrors.ErrIncorectPassword
 	}
 
-	existingThread.Caption = inputThread.Caption
-	existingThread.Text = inputThread.Text
-	existingThread.MediaLinks = inputThread.MediaLinks
-
-	now := time.Now()
-	existingThread.UpdatedAt = &now
-
-	return s.repo.Update(ctx, existingThread)
+	return s.Threads.Delete(ctx, thread.GlobalID)
 }
 
-func (s *t) DeleteThread(ctx context.Context, boardKey string, id int64, password string) error {
-	res, _ := s.repo.GetByID(ctx, id)
-	if res == nil {
-		return customErrors.ErrNotFound
-	}
-	if res.Password == "" {
-		return customErrors.ErrUnableToDelete
-	}
-
-	eq, err := security.Verify(password, res.Password)
+func (s *ThreadService) List(ctx context.Context, boardKey string) ([]*threadDTO.ThreadResponse, error) {
+	threads, err := s.Threads.List(ctx, boardKey)
 	if err != nil {
-		return err
-	}
-	if !eq {
-		return customErrors.ErrInvalidPassword
-	}
-	return s.repo.Delete(ctx, id, password)
-}
-func (s *t) ListThread(ctx context.Context, boardKey string) ([]*m.Thread, error) {
-	return s.repo.List(ctx, boardKey)
-}
-func (s *t) ReplyThread(ctx context.Context, boardKey string, id int64) error {
-	_, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return s.repo.Reply(ctx, id)
+	resThreads := make([]*threadDTO.ThreadResponse, len(threads))
+	for i := range threads {
+		resThreads[i] = threadDTO.ToThreadResponse(threads[i])
+	}
+
+	return resThreads, nil
+}
+
+func (s *ThreadService) ListWithPost(ctx context.Context, boardKey string) ([]*threadDTO.ThreadPostResponse, error) {
+	threadsWithPost, err := s.Threads.ListWithPost(ctx, boardKey)
+	if err != nil {
+		return nil, err
+	}
+
+	resThreadsWithPost := make([]*threadDTO.ThreadPostResponse, len(threadsWithPost))
+	for i := range threadsWithPost {
+		resThreadsWithPost[i] = &threadDTO.ThreadPostResponse{
+			Thread: *threadDTO.ToThreadResponse(&threadsWithPost[i].Thread),
+			Post:   *postDTO.ToPostResponse(&threadsWithPost[i].Post),
+		}
+	}
+
+	return resThreadsWithPost, nil
 }

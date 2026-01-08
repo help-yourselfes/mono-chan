@@ -2,14 +2,17 @@ package security
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"strings"
 
 	"golang.org/x/crypto/argon2"
 )
 
 const (
-	pattern = "$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s"
+	format  = "$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s"
 	time    = 2
 	memory  = 19 * 1024
 	threads = 1
@@ -19,39 +22,41 @@ const (
 
 func Hash(password string) (string, error) {
 	salt := make([]byte, saltLen)
-
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
 
-	hash := argon2.IDKey([]byte(password), salt, time, memory, threads, keyLen)
+	hash := argon2.IDKey([]byte(password), salt, time, memory, uint8(threads), keyLen)
 
-	encodedSalt := base64.RawStdEncoding.EncodeToString(salt)
-	encodedHash := base64.RawStdEncoding.EncodeToString(hash)
-
-	return fmt.Sprintf(pattern, memory, time, threads, encodedSalt, encodedHash), nil
+	return fmt.Sprintf(format, memory, time, threads,
+		base64.RawStdEncoding.EncodeToString(salt),
+		base64.RawStdEncoding.EncodeToString(hash)), nil
 }
 
 func Verify(password, storedHash string) (bool, error) {
-	var memory, time uint32
-	var parallel uint8
-	var salt, hash []byte
-
-	_, err := fmt.Scanf(storedHash, pattern, &memory, &time, &parallel, &salt, &hash)
-	if err != nil {
-		return false, err
+	parts := strings.Split(storedHash, "$")
+	if len(parts) != 6 {
+		return false, errors.New("invalid hash format")
 	}
 
-	decodedSalt, err := base64.RawStdEncoding.DecodeString(string(salt))
+	var m, t uint32
+	var p uint8
+	_, err := fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &m, &t, &p)
 	if err != nil {
-		return false, err
-	}
-	decodedHash, err := base64.RawStdEncoding.DecodeString(string(hash))
-	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to parse params: %w", err)
 	}
 
-	comparisonHash := argon2.IDKey([]byte(password), decodedSalt, time, memory, threads, uint32(len(decodedHash)))
+	salt, err := base64.RawStdEncoding.DecodeString(parts[4])
+	if err != nil {
+		return false, fmt.Errorf("failed to decode salt: %w", err)
+	}
 
-	return string(comparisonHash) == string(decodedHash), nil
+	hash, err := base64.RawStdEncoding.DecodeString(parts[5])
+	if err != nil {
+		return false, fmt.Errorf("failed to decode hash: %w", err)
+	}
+
+	comparison := argon2.IDKey([]byte(password), salt, t, m, p, uint32(len(hash)))
+
+	return subtle.ConstantTimeCompare(comparison, hash) == 1, nil
 }

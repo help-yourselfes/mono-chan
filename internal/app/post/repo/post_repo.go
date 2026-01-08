@@ -12,5 +12,5 @@ type PostRepo interface {
 	GetById(ctx context.Context, boardKey string, id int64) (*model.Post, error)
 	Update(ctx context.Context, post *dto.UpdatePostRequest) error
 	Delete(ctx context.Context, globalId int64) error
-	List(ctx context.Context, boardKey string, threadId int64) ([]*model.Post, error)
+	List(ctx context.Context, boardKey string, rootPostID int64) ([]*model.Post, error)
 }

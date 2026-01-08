@@ -1,9 +1,18 @@
 package model
 
+import "github.com/helpyourselfes/mono-chan/internal/app/post/model"
+
 type Thread struct {
-	GlobalID   int    `json:"-"`
-	PostID     int64  `json:"post_id"`
-	Caption    string `json:"caption"`
-	BoardKey   string `json:"board_key"`
-	ReplyCount int64  `json:"reply_count"`
+	GlobalID     int64
+	BoardKey     string
+	PostID       int64
+	UserHash     string
+	PasswordHash string
+	Caption      string
+	ReplyCount   int64
+}
+
+type ThreadPost struct {
+	Thread
+	model.Post
 }

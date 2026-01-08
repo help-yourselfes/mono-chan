@@ -14,26 +14,29 @@ CREATE TABLE IF NOT EXISTS boards (
 
 CREATE TABLE IF NOT EXISTS threads (
 	global_id INTEGER PRIMARY KEY UNIQUE,
-	post_id INTEGER UNIQUE,
 	board_key TEXT NOT NULL,
+	post_id INTEGER NOT NULL,
+	user_hash TEXT,
+	password_hash TEXT,
 	caption TEXT,
-	reply_count INTEGER,
+	reply_count INTEGER DEFAULT 0,
 	FOREIGN KEY(board_key) REFERENCES boards("key") ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS posts (
 	global_id INTEGER PRIMARY KEY UNIQUE,
 	board_key TEXT NOT NULL,
-	thread_id INTEGER,
+	thread_id INTEGER NOT NULL,
+	root_post_id INTEGER,		
 	id INTEGER UNIQUE,
 	text TEXT,
 	media_json TEXT,
 	password_hash TEXT,
-	created_at TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	updated_at TEXT DEFAULT NULL,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at TIMESTAMP DEFAULT NULL,
 	is_op INTEGER,
 	FOREIGN KEY(board_key) REFERENCES boards("key"),
-	FOREIGN KEY(thread_id) REFERENCES threads(post_id) ON DELETE CASCADE
+	FOREIGN KEY(thread_id) REFERENCES threads(global_id) ON DELETE CASCADE
 );
 
 CREATE TRIGGER IF NOT EXISTS update_post_timestamp 
@@ -46,6 +49,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_board_local
 ON posts (board_key, id);
 
 CREATE INDEX IF NOT EXISTS idx_posts_threads 
-ON posts (thread_id) 
-WHERE thread_id IS NOT NULL;
+ON posts (root_post_id) 
+WHERE root_post_id IS NOT NULL;
 `
